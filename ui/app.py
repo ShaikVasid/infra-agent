@@ -1,99 +1,110 @@
 """
-InfraBot - Streamlit chat UI.
+InfraBot — Streamlit Chat UI
 Run with: streamlit run ui/app.py
 """
+import warnings
+warnings.filterwarnings("ignore")
+
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import streamlit as st
-import uuid
 from agent.agent import build_agent, run_agent
 
-# ── Page config ───────────────────────────────────────────────────────────────
+# ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="InfraBot",
     page_icon="🤖",
-    layout="centered",
+    layout="centered"
 )
 
-st.title("🤖 InfraBot")
-st.caption("AI-powered infrastructure assistant — ask me anything about your AWS environment.")
+# ── Custom CSS ────────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+    .main-header {
+        text-align: center;
+        padding: 1rem 0 0.5rem 0;
+    }
+    .stChatMessage { border-radius: 12px; }
+    .suggestion-btn { margin: 2px; }
+</style>
+""", unsafe_allow_html=True)
 
-# ── Session state setup ───────────────────────────────────────────────────────
+# ── Header ────────────────────────────────────────────────────────────────────
+st.markdown("<div class='main-header'>", unsafe_allow_html=True)
+st.title("🤖 InfraBot")
+st.caption("AI-powered cloud infrastructure assistant — ask about your AWS environment")
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ── Session state ─────────────────────────────────────────────────────────────
 if "agent" not in st.session_state:
     with st.spinner("Starting InfraBot..."):
-        try:
-            st.session_state.agent = build_agent()
-            st.session_state.thread_id = str(uuid.uuid4())
-            st.session_state.messages = []
-        except EnvironmentError as e:
-            st.error(f"⚠️ Setup error: {e}")
-            st.stop()
-
-# ── Render chat history ───────────────────────────────────────────────────────
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# ── Example prompts (shown when chat is empty) ────────────────────────────────
-if not st.session_state.messages:
-    st.markdown("**Try asking:**")
-    examples = [
-        "List all my S3 buckets and flag any that are public",
-        "Show me all IAM roles in my account",
-        "Analyse the IAM role named 'my-role' for security issues",
-        "List EC2 instances in us-east-1",
-    ]
-    cols = st.columns(2)
-    for i, example in enumerate(examples):
-        if cols[i % 2].button(example, key=f"ex_{i}"):
-            st.session_state.pending_prompt = example
-            st.rerun()
-
-# ── Handle example button click ───────────────────────────────────────────────
-if "pending_prompt" in st.session_state:
-    prompt = st.session_state.pop("pending_prompt")
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        with st.spinner("InfraBot is querying your infrastructure..."):
-            response = run_agent(
-                st.session_state.agent,
-                prompt,
-                thread_id=st.session_state.thread_id,
-            )
-        st.markdown(response)
-
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    st.rerun()
-
-# ── Chat input ────────────────────────────────────────────────────────────────
-if prompt := st.chat_input("Ask about your infrastructure..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        with st.spinner("InfraBot is querying your infrastructure..."):
-            response = run_agent(
-                st.session_state.agent,
-                prompt,
-                thread_id=st.session_state.thread_id,
-            )
-        st.markdown(response)
-
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    st.rerun()
+        st.session_state.agent = build_agent()
+    st.session_state.messages = []
+    st.session_state.thread_id = "streamlit-session"
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ InfraBot")
-    st.markdown("**Connected:** AWS (S3, IAM, EC2)")
-    st.markdown("**Coming soon:** GCP, CloudWatch logs, Terraform plan analyser")
+    st.markdown("**Status:** 🟢 Connected")
+    st.markdown("**LLM:** Google Gemini")
+    st.markdown("**Cloud:** AWS (read-only)")
     st.divider()
-    if st.button("🗑️ Clear conversation"):
+
+    st.subheader("💡 Quick Prompts")
+    prompts = [
+        "List my S3 buckets",
+        "List my IAM roles",
+        "List my EC2 instances",
+        "Audit my infrastructure",
+        "Check vaultpay-2026 bucket",
+        "Analyze IAM role AdministratorAccess",
+    ]
+    for prompt in prompts:
+        if st.button(prompt, key=f"btn_{prompt}", use_container_width=True):
+            st.session_state.pending_prompt = prompt
+
+    st.divider()
+    if st.button("🗑️ Clear conversation", use_container_width=True):
         st.session_state.messages = []
-        st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.thread_id = f"streamlit-{id(st.session_state)}"
         st.rerun()
-    st.divider()
-    st.markdown("**Day 1** of InfraBot build")
-    st.markdown("[GitHub](https://github.com/ShaikVasid/infra-agent)")
+
+# ── Chat history ──────────────────────────────────────────────────────────────
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# ── Handle sidebar button prompt ─────────────────────────────────────────────
+if "pending_prompt" in st.session_state:
+    user_input = st.session_state.pop("pending_prompt")
+else:
+    user_input = st.chat_input("Ask about your infrastructure...")
+
+# ── Process input ─────────────────────────────────────────────────────────────
+def clean(response) -> str:
+    if isinstance(response, str):
+        return response
+    if isinstance(response, list):
+        return "".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in response)
+    return str(response)
+
+if user_input:
+    # Show user message
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # Get agent response
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            response = run_agent(
+                st.session_state.agent,
+                user_input,
+                thread_id=st.session_state.thread_id
+            )
+            response = clean(response)
+        st.markdown(response)
+
+    st.session_state.messages.append({"role": "assistant", "content": response})
