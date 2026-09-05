@@ -246,3 +246,135 @@ ALL_TOOLS = [
     analyze_iam_role,
     list_ec2_instances,
 ]
+
+
+@tool
+def parse_terraform_plan(plan_json: str) -> str:
+    """
+    Parse a Terraform plan JSON string and summarise what will be created,
+    updated, or destroyed. Flags risky changes like IAM wildcard permissions,
+    public S3 buckets, and open security groups.
+    Usage: pass the output of 'terraform show -json <planfile>' as a string.
+    """
+    import json
+    try:
+        plan = json.loads(plan_json)
+    except json.JSONDecodeError:
+        return "❌ Invalid JSON. Run: terraform plan -out=plan.tfplan && terraform show -json plan.tfplan"
+
+    changes = plan.get("resource_changes", [])
+    if not changes:
+        return "✅ No resource changes found in this plan."
+
+    created, updated, destroyed, risks = [], [], [], []
+
+    for r in changes:
+        addr    = r.get("address", "unknown")
+        actions = r.get("change", {}).get("actions", [])
+        after   = r.get("change", {}).get("after") or {}
+
+        if "create" in actions:
+            created.append(addr)
+        if "update" in actions:
+            updated.append(addr)
+        if "delete" in actions:
+            destroyed.append(addr)
+
+        # Risk checks
+        rtype = r.get("type", "")
+        if rtype in ("aws_iam_role_policy", "aws_iam_policy"):
+            doc = str(after.get("policy", ""))
+            if '"*"' in doc or "'*'" in doc:
+                risks.append(f"🚨 {addr} — IAM policy contains wildcard (*) permissions")
+
+        if rtype == "aws_s3_bucket_public_access_block":
+            for field in ("block_public_acls", "block_public_policy",
+                          "ignore_public_acls", "restrict_public_buckets"):
+                if after.get(field) is False:
+                    risks.append(f"⚠️  {addr} — {field} is set to false (public access risk)")
+
+        if rtype == "aws_security_group_rule":
+            cidr = after.get("cidr_blocks", [])
+            if "0.0.0.0/0" in cidr:
+                risks.append(f"⚠️  {addr} — Security group open to 0.0.0.0/0")
+
+    lines = ["**Terraform Plan Summary**\n"]
+    lines.append(f"➕ Create:  {len(created)} resource(s)")
+    lines.append(f"✏️  Update:  {len(updated)} resource(s)")
+    lines.append(f"🗑️  Destroy: {len(destroyed)} resource(s)\n")
+
+    if created:
+        lines.append("**Resources to create:**")
+        lines += [f"  • {r}" for r in created]
+    if updated:
+        lines.append("\n**Resources to update:**")
+        lines += [f"  • {r}" for r in updated]
+    if destroyed:
+        lines.append("\n**Resources to destroy:**")
+        lines += [f"  • {r}" for r in destroyed]
+    if risks:
+        lines.append("\n**⚠️  Security Risks Detected:**")
+        lines += [f"  {r}" for r in risks]
+    else:
+        lines.append("\n✅ No security risks detected in this plan.")
+
+    return "\n".join(lines)
+
+
+@tool
+def fetch_cloudwatch_logs(log_group: str, lines: int = 20) -> str:
+    """
+    Fetch the most recent log lines from an AWS CloudWatch log group.
+    Args:
+        log_group: The CloudWatch log group name (e.g. /aws/lambda/my-function)
+        lines: Number of recent log lines to return (default 20, max 100)
+    """
+    import boto3, time
+    from botocore.exceptions import ClientError
+
+    try:
+        client = boto3.client("logs")
+        lines  = min(int(lines), 100)
+
+        # Get the most recent log stream
+        streams = client.describe_log_streams(
+            logGroupName=log_group,
+            orderBy="LastEventTime",
+            descending=True,
+            limit=1
+        ).get("logStreams", [])
+
+        if not streams:
+            return f"No log streams found in log group: {log_group}"
+
+        stream_name = streams[0]["logStreamName"]
+        end_time    = int(time.time() * 1000)
+        start_time  = end_time - (6 * 3600 * 1000)  # last 6 hours
+
+        events = client.get_log_events(
+            logGroupName=log_group,
+            logStreamName=stream_name,
+            startTime=start_time,
+            endTime=end_time,
+            limit=lines,
+            startFromHead=False
+        ).get("events", [])
+
+        if not events:
+            return f"No recent log events in {log_group} / {stream_name}"
+
+        result = [f"**CloudWatch Logs** — `{log_group}`",
+                  f"Stream: `{stream_name}` | Last {len(events)} events\n"]
+        for e in events:
+            ts  = e.get("timestamp", 0) // 1000
+            msg = e.get("message", "").strip()
+            from datetime import datetime, timezone
+            t = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%H:%M:%S")
+            result.append(f"`{t}` {msg}")
+
+        return "\n".join(result)
+
+    except ClientError as e:
+        return f"❌ AWS error: {e.response['Error']['Message']}"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
