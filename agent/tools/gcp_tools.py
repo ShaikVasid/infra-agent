@@ -70,13 +70,14 @@ def list_gcp_iam_bindings(project_id: str = "") -> str:
         risks = []
 
         for binding in policy.bindings:
-            role    = binding.role
+            role = binding.role
             members = list(binding.members)
             lines.append(f"**{role}**")
             for m in members:
                 lines.append(f"  • {m}")
                 if "allUsers" in m or "allAuthenticatedUsers" in m:
-                    risks.append(f"🚨 {role} granted to {m} — publicly accessible!")
+                    risks.append(
+                        f"🚨 {role} granted to {m} — publicly accessible!")
             lines.append("")
 
         if risks:
@@ -116,12 +117,14 @@ def multi_cloud_audit() -> str:
                 r = s3.get_public_access_block(Bucket=name)
                 cfg = r["PublicAccessBlockConfiguration"]
                 if not all(cfg.values()):
-                    aws_risks.append(f"🚨 {name} — public access not fully blocked")
+                    aws_risks.append(
+                        f"🚨 {name} — public access not fully blocked")
                     report.append(f"  🚨 {name} — PUBLIC")
                 else:
                     report.append(f"  ✅ {name} — private")
             except ClientError:
-                report.append(f"  ⚠️  {name} — could not check access settings")
+                report.append(
+                    f"  ⚠️  {name} — could not check access settings")
         if not aws_risks:
             report.append("  ✅ All S3 buckets have public access blocked.")
     except Exception as e:
@@ -137,14 +140,17 @@ def multi_cloud_audit() -> str:
         for role in roles:
             rname = role["RoleName"]
             try:
-                policies = iam.list_attached_role_policies(RoleName=rname).get("AttachedPolicies", [])
+                policies = iam.list_attached_role_policies(
+                    RoleName=rname).get("AttachedPolicies", [])
                 for pol in policies:
                     pv = iam.get_policy(PolicyArn=pol["PolicyArn"])
                     ver = pv["Policy"]["DefaultVersionId"]
-                    doc = str(iam.get_policy_version(PolicyArn=pol["PolicyArn"], VersionId=ver))
+                    doc = str(iam.get_policy_version(
+                        PolicyArn=pol["PolicyArn"], VersionId=ver))
                     if '"*"' in doc:
                         wildcard_count += 1
-                        report.append(f"  🚨 {rname} — wildcard (*) permissions via {pol['PolicyName']}")
+                        report.append(
+                            f"  🚨 {rname} — wildcard (*) permissions via {pol['PolicyName']}")
             except Exception:
                 pass
         if wildcard_count == 0:
