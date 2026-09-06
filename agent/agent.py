@@ -44,13 +44,13 @@ def build_agent():
         )
     elif os.getenv("GOOGLE_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", temperature=0)
+        llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0)
     elif os.getenv("OPENAI_API_KEY"):
         from langchain_openai import ChatOpenAI
         llm = ChatOpenAI(model="gpt-4o", temperature=0)
     elif os.getenv("GOOGLE_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", temperature=0)
+        llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0)
     else:
         raise EnvironmentError(
             "No LLM API key found. Set one of: ANTHROPIC_API_KEY, GROQ_API_KEY, "
