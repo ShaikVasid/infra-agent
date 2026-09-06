@@ -1,0 +1,29 @@
+# Virtual environment — never goes in the image
+venv/
+.venv/
+
+# Secrets — never commit or bundle these
+.env
+*.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Git
+.git/
+.gitignore
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Test / docs
+*.md
+tests/

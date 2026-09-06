@@ -2,10 +2,15 @@
 langchain==0.3.25
 langgraph==0.2.74
 langchain-anthropic==0.3.15
-langchain-openai==0.2.14      # optional, if you prefer OpenAI
+langchain-openai==0.2.14
+langchain-google-genai==2.1.4
 
 # AWS
 boto3==1.38.0
+
+# GCP (optional — needed for GCP tools)
+google-cloud-storage==2.19.0
+google-cloud-resource-manager==1.14.2
 
 # UI
 streamlit==1.45.1
