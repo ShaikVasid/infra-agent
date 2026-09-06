@@ -9,6 +9,7 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 from agent.tools.aws_tools import ALL_TOOLS
+from agent.tools.gcp_tools import ALL_GCP_TOOLS
 
 load_dotenv()
 
@@ -27,7 +28,7 @@ Always:
 - Explain what you found in plain English, not just raw API output
 - Highlight ⚠️ warnings and 🚨 critical issues clearly
 
-You are connected to AWS. GCP support is coming soon.
+You are connected to AWS (S3, IAM, EC2) and GCP (Cloud Storage, IAM). Use the right tools for each cloud.
 """
 
 
@@ -43,13 +44,13 @@ def build_agent():
         )
     elif os.getenv("GOOGLE_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", temperature=0)
+        llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0)
     elif os.getenv("OPENAI_API_KEY"):
         from langchain_openai import ChatOpenAI
         llm = ChatOpenAI(model="gpt-4o", temperature=0)
     elif os.getenv("GOOGLE_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", temperature=0)
+        llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0)
     else:
         raise EnvironmentError(
             "No LLM API key found. Set one of: ANTHROPIC_API_KEY, GROQ_API_KEY, "
@@ -60,7 +61,7 @@ def build_agent():
 
     agent = create_react_agent(
         model=llm,
-        tools=ALL_TOOLS,
+        tools=ALL_TOOLS + ALL_GCP_TOOLS,
         checkpointer=memory,
         prompt=SYSTEM_PROMPT,
     )
