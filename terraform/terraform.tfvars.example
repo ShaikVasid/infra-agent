@@ -1,0 +1,19 @@
+# Copy this file to terraform.tfvars and fill in your real values.
+# NEVER commit terraform.tfvars to git — it contains secrets.
+
+aws_region = "us-east-1"
+app_name   = "infrabot"
+
+# Your Google Gemini API key
+google_api_key = "AIza..."
+
+# AWS credentials used by the InfraBot agent inside the container
+# Use a read-only IAM user (not your root or admin key)
+aws_access_key_id     = "AKIA..."
+aws_secret_access_key = "..."
+
+# ECS task sizing (256 CPU = 0.25 vCPU, 512 MB RAM — cheapest Fargate tier)
+cpu    = 256
+memory = 512
+
+container_port = 8501
