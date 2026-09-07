@@ -5,10 +5,9 @@ on:
     branches: [main]
 
 env:
-  AWS_REGION:          ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY_URL:  ${{ secrets.ECR_REPOSITORY_URL }}
-  ECS_CLUSTER:         ${{ secrets.ECS_CLUSTER }}
-  ECS_SERVICE:         ${{ secrets.ECS_SERVICE }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
 
 jobs:
   deploy:
@@ -44,17 +43,21 @@ jobs:
 
       # ── 4. ECR login ──────────────────────────────────────────────────────
       - name: Login to Amazon ECR
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       # ── 5. Build & push ───────────────────────────────────────────────────
       - name: Build, tag, and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build --platform linux/amd64 -t infrabot:latest .
-          docker tag infrabot:latest "$ECR_REPOSITORY_URL:latest"
-          docker tag infrabot:latest "$ECR_REPOSITORY_URL:${{ github.sha }}"
-          docker push "$ECR_REPOSITORY_URL:latest"
-          docker push "$ECR_REPOSITORY_URL:${{ github.sha }}"
-          echo "Pushed $ECR_REPOSITORY_URL:${{ github.sha }}"
+          docker tag infrabot:latest "$ECR_REGISTRY/infrabot:latest"
+          docker tag infrabot:latest "$ECR_REGISTRY/infrabot:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/infrabot:latest"
+          docker push "$ECR_REGISTRY/infrabot:$IMAGE_TAG"
+          echo "Pushed $ECR_REGISTRY/infrabot:$IMAGE_TAG"
 
       # ── 6. Force new ECS deployment ───────────────────────────────────────
       - name: Deploy to ECS Fargate
