@@ -17,7 +17,7 @@ def _get_client(service: str, region: str = None):
         raise RuntimeError("AWS credentials not found. Check your .env file.")
 
 
-# ── S3 Tools ──────────────────────────────────────────────────────────────────
+# S3 tools
 
 @tool
 def list_s3_buckets() -> str:
@@ -100,7 +100,7 @@ def check_s3_bucket_details(bucket_name: str) -> str:
         return f"Error fetching bucket details: {str(e)}"
 
 
-# ── IAM Tools ─────────────────────────────────────────────────────────────────
+# IAM tools
 
 @tool
 def list_iam_roles() -> str:
@@ -202,7 +202,7 @@ def analyze_iam_role(role_name: str) -> str:
         return f"Error analysing IAM role: {str(e)}"
 
 
-# ── EC2 Tools ─────────────────────────────────────────────────────────────────
+# EC2 tools
 
 @tool
 def list_ec2_instances(region: str = "us-east-1") -> str:
