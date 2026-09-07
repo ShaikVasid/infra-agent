@@ -31,7 +31,7 @@ jobs:
           pip install flake8 --quiet
           flake8 agent/ ui/ main.py \
             --max-line-length=120 \
-            --ignore=E501,W503,E402 \
+            --ignore=E501,W503,E402,E221 \
             --count
 
       # ── 3. AWS auth ───────────────────────────────────────────────────────

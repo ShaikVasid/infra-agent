@@ -3,7 +3,6 @@ InfraBot — GCP tools
 Requires: GOOGLE_APPLICATION_CREDENTIALS set in .env pointing to a service account JSON
 or running on a GCP machine with ADC (Application Default Credentials).
 """
-import os
 from langchain_core.tools import tool
 
 
@@ -49,7 +48,6 @@ def list_gcp_iam_bindings(project_id: str = "") -> str:
     """
     try:
         from google.cloud import resourcemanager_v3
-        from google.iam.v1 import iam_policy_pb2
 
         client = resourcemanager_v3.ProjectsClient()
 

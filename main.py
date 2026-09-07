@@ -7,6 +7,7 @@ warnings.filterwarnings("ignore")
 
 from agent.agent import build_agent, run_agent
 
+
 def clean(response) -> str:
     """Always return a plain string from the agent response."""
     if isinstance(response, str):
@@ -20,6 +21,7 @@ def clean(response) -> str:
                 parts.append(str(p))
         return "".join(parts)
     return str(response)
+
 
 def main():
     print("🤖 InfraBot CLI (type 'exit' to quit)\n")
@@ -41,6 +43,7 @@ def main():
 
         response = run_agent(agent, user_input, thread_id=thread_id)
         print(f"\nInfraBot: {clean(response)}\n")
+
 
 if __name__ == "__main__":
     main()

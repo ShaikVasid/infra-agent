@@ -3,7 +3,6 @@ AWS tools for InfraBot.
 Each function is a LangChain tool the agent can call.
 Day 1: S3 + IAM basics. More tools added in later days.
 """
-import json
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 from langchain_core.tools import tool
@@ -180,7 +179,7 @@ def analyze_iam_role(role_name: str) -> str:
                                 f"⚠️  {policy['PolicyName']}: Wildcard resource (*) — applies to ALL resources!"
                             )
             except ClientError:
-                findings.append(f"    (Could not read policy document)")
+                findings.append("    (Could not read policy document)")
 
         # Inline policies
         inline = iam.list_role_policies(RoleName=role_name)["PolicyNames"]
@@ -329,7 +328,8 @@ def fetch_cloudwatch_logs(log_group: str, lines: int = 20) -> str:
         log_group: The CloudWatch log group name (e.g. /aws/lambda/my-function)
         lines: Number of recent log lines to return (default 20, max 100)
     """
-    import boto3, time
+    import boto3
+    import time
     from botocore.exceptions import ClientError
 
     try:
