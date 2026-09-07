@@ -3,10 +3,8 @@
 # Usage: bash deploy.sh
 set -euo pipefail
 
-# ── Read region from tfvars (safe before terraform state exists) ───────────────
-REGION=$(grep 'aws_region' terraform/terraform.tfvars 2>/dev/null \
-  | sed 's/.*=\s*"\([^"]*\)".*/\1/' \
-  | tr -d '[:space:]') 
+# ── Read region from tfvars using awk (works on macOS BSD) ────────────────────
+REGION=$(awk -F'"' '/^aws_region/{print $2}' terraform/terraform.tfvars 2>/dev/null || true)
 REGION=${REGION:-us-east-1}
 echo "Region: $REGION"
 
@@ -53,12 +51,10 @@ aws ecs update-service \
 echo ""
 echo "✅  Deploy triggered! ECS is pulling the new image (~60s to start)."
 echo ""
-echo "==> To get the public IP once the task is RUNNING, run:"
+echo "==> Run these commands to get the public IP once the task is RUNNING:"
 echo ""
-cat << IPSCRIPT
-  TASK_ARN=\$(aws ecs list-tasks --cluster $CLUSTER --service-name $SERVICE --region $REGION --query 'taskArns[0]' --output text)
-  ENI=\$(aws ecs describe-tasks --cluster $CLUSTER --tasks \$TASK_ARN --region $REGION --query 'tasks[0].attachments[0].details[?name==\`networkInterfaceId\`].value' --output text)
-  aws ec2 describe-network-interfaces --network-interface-ids \$ENI --region $REGION --query 'NetworkInterfaces[0].Association.PublicIp' --output text
-IPSCRIPT
+echo "  TASK_ARN=\$(aws ecs list-tasks --cluster $CLUSTER --service-name $SERVICE --region $REGION --query 'taskArns[0]' --output text)"
+echo "  ENI=\$(aws ecs describe-tasks --cluster $CLUSTER --tasks \$TASK_ARN --region $REGION --query 'tasks[0].attachments[0].details[?name==\`networkInterfaceId\`].value' --output text)"
+echo "  aws ec2 describe-network-interfaces --network-interface-ids \$ENI --region $REGION --query 'NetworkInterfaces[0].Association.PublicIp' --output text"
 echo ""
 echo "Then open: http://<PUBLIC_IP>:8501"
