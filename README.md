@@ -163,9 +163,9 @@ show me EC2 instances in eu-west-1
 - [x] Day 1 — AWS tools (S3, IAM, EC2), ReAct agent, CLI
 - [x] Day 2 — Streamlit UI, Terraform plan parser, CloudWatch log fetcher
 - [x] Day 3 — GCP tools, multi-cloud audit, README
-- [ ] Day 4–5 — Dockerise with Dockerfile + docker-compose
-- [ ] Day 6–7 — Deploy on AWS ECS Fargate via Terraform
-- [ ] Day 8–10 — GitHub Actions CI/CD pipeline
+- [x] Day 4–5 — Dockerise with Dockerfile + docker-compose
+- [x] Day 6–7 — Deploy on AWS ECS Fargate via Terraform
+- [x] Day 8–10 — GitHub Actions CI/CD pipeline (build → ECR → ECS deploy on every push to main)
 
 ---
 

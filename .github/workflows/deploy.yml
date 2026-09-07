@@ -1,0 +1,78 @@
+name: Build and Deploy InfraBot
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION:          ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY_URL:  ${{ secrets.ECR_REPOSITORY_URL }}
+  ECS_CLUSTER:         ${{ secrets.ECS_CLUSTER }}
+  ECS_SERVICE:         ${{ secrets.ECS_SERVICE }}
+
+jobs:
+  deploy:
+    name: Build → Push → Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ───────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Lint (fast sanity check before building) ───────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install & lint
+        run: |
+          pip install flake8 --quiet
+          flake8 agent/ ui/ main.py \
+            --max-line-length=120 \
+            --ignore=E501,W503,E402 \
+            --count
+
+      # ── 3. AWS auth ───────────────────────────────────────────────────────
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      # ── 4. ECR login ──────────────────────────────────────────────────────
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── 5. Build & push ───────────────────────────────────────────────────
+      - name: Build, tag, and push Docker image
+        run: |
+          docker build --platform linux/amd64 -t infrabot:latest .
+          docker tag infrabot:latest "$ECR_REPOSITORY_URL:latest"
+          docker tag infrabot:latest "$ECR_REPOSITORY_URL:${{ github.sha }}"
+          docker push "$ECR_REPOSITORY_URL:latest"
+          docker push "$ECR_REPOSITORY_URL:${{ github.sha }}"
+          echo "Pushed $ECR_REPOSITORY_URL:${{ github.sha }}"
+
+      # ── 6. Force new ECS deployment ───────────────────────────────────────
+      - name: Deploy to ECS Fargate
+        run: |
+          aws ecs update-service \
+            --cluster  "$ECS_CLUSTER" \
+            --service  "$ECS_SERVICE" \
+            --force-new-deployment \
+            --region   "$AWS_REGION" \
+            --output   text \
+            --query    'service.serviceName'
+          echo "Deployment triggered for $ECS_SERVICE"
+
+      # ── 7. Wait for rollout to complete ───────────────────────────────────
+      - name: Wait for service stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster  "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --region   "$AWS_REGION"
+          echo "Service is stable and healthy"
